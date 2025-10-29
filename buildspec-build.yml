@@ -1,0 +1,41 @@
+version: 0.2
+
+env:
+  variables:
+    DOCKER_BUILDKIT: "1"
+
+phases:
+  pre_build:
+    commands:
+      - echo "Login no ECR"
+      - aws --version
+      - REPOSITORY_URI=${ECR_REPO}
+      - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com
+      - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION:-build-$(date +%Y%m%d%H%M%S)}
+  build:
+    commands:
+      - echo "Build da imagem do componente ${COMPONENT}"
+      - cd ${COMPONENT}
+      - |
+        if [ -f Dockerfile ]; then
+          docker build -t ${REPOSITORY_URI}:${IMAGE_TAG} .
+        else
+          echo "Dockerfile não encontrado em ${COMPONENT}"; exit 1
+        fi
+  post_build:
+    commands:
+      - echo "Push para ECR"
+      - docker push ${REPOSITORY_URI}:${IMAGE_TAG}
+      - docker tag ${REPOSITORY_URI}:${IMAGE_TAG} ${REPOSITORY_URI}:latest
+      - docker push ${REPOSITORY_URI}:latest
+      - cd ..
+      - mkdir -p dist/k8s
+      - sed "s|IMAGE_URI_PLACEHOLDER|${REPOSITORY_URI}:${IMAGE_TAG}|g" k8s/deployment.yaml > dist/k8s/deployment.yaml
+      - cp k8s/service.yaml dist/k8s/service.yaml
+      - printf '{"repositoryUri":"%s","imageTag":"%s"}' "${REPOSITORY_URI}" "${IMAGE_TAG}" > dist/imageDetail.json
+
+artifacts:
+  files:
+    - dist/**/*
+  discard-paths: no

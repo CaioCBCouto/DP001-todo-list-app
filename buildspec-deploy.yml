@@ -1,0 +1,24 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo "Instalando kubectl"
+      - curl -sLo kubectl https://amazon-eks.s3.amazonaws.com/1.29.0/2024-04-19/bin/linux/amd64/kubectl
+      - chmod +x kubectl && mv kubectl /usr/local/bin/kubectl
+      - echo "Configurando kubeconfig"
+      - aws eks update-kubeconfig --name ${EKS_CLUSTER_NAME} --region ${AWS_DEFAULT_REGION}
+  build:
+    commands:
+      - echo "Aplicando manifests"
+      - kubectl apply -f dist/k8s/deployment.yaml
+      - kubectl apply -f dist/k8s/service.yaml
+      - echo "Aguardando rollout"
+      - kubectl rollout status deploy/todo-frontend --timeout=180s
+  post_build:
+    commands:
+      - kubectl get deploy,pods,svc -o wide
+
+artifacts:
+  files:
+    - dist/imageDetail.json
