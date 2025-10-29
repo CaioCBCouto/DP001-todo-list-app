@@ -38,4 +38,5 @@ phases:
 artifacts:
   files:
     - dist/**/*
+    - buildspec-deploy.yml
   discard-paths: no
