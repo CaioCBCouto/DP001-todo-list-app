@@ -1,16 +1,17 @@
 version: 0.2
 
 phases:
-    pre_build:
+  pre_build:
     commands:
       - echo "Instalando kubectl (match do minor do cluster)"
-      - K8S_MINOR=$(aws eks describe-cluster --name ${EKS_CLUSTER_NAME} --region ${AWS_DEFAULT_REGION} --query 'cluster.version' --output text | cut -d. -f1-2)
-      - KUBECTL_VER=$(curl -sSfL https://dl.k8s.io/release/stable-${K8S_MINOR}.txt)
-      - echo "Baixando kubectl ${KUBECTL_VER}"
-      - curl -sSfL -o kubectl https://dl.k8s.io/${KUBECTL_VER}/bin/linux/amd64/kubectl
-      - install -m 0755 kubectl /usr/local/bin/kubectl
+      - |
+        K8S_MINOR=$(aws eks describe-cluster --name "${EKS_CLUSTER_NAME}" --region "${AWS_DEFAULT_REGION}" --query 'cluster.version' --output text | cut -d. -f1-2)
+        KUBECTL_VER=$(curl -sSfL "https://dl.k8s.io/release/stable-${K8S_MINOR}.txt")
+        echo "Baixando kubectl ${KUBECTL_VER}"
+        curl -sSfL -o kubectl "https://dl.k8s.io/${KUBECTL_VER}/bin/linux/amd64/kubectl"
+        install -m 0755 kubectl /usr/local/bin/kubectl
       - echo "Configurando kubeconfig"
-      - aws eks update-kubeconfig --name ${EKS_CLUSTER_NAME} --region ${AWS_DEFAULT_REGION}
+      - aws eks update-kubeconfig --name "${EKS_CLUSTER_NAME}" --region "${AWS_DEFAULT_REGION}"
   build:
     commands:
       - echo "Aplicando manifests"
